@@ -1,0 +1,10 @@
+# =====================================================================
+# | Parameters for MNC (NetCDF)      |
+# =====================================================================
+# Example "data.mnc" file
+# Lines beginning "#" are comments
+ &MNC_01
+/
+# Note: Some systems use & as the
+# namelist terminator. Other systems
+# use a / character (as shown here).

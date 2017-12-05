@@ -1,0 +1,8 @@
+# Packages
+ &PACKAGES
+ useOBCS=.TRUE.,
+ useKL10=.TRUE.,
+ useDIAGNOSTICS=.FALSE.,
+ useMNC=.FALSE.,
+ useNF90IO=.TRUE.,
+ /

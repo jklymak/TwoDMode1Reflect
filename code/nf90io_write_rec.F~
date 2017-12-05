@@ -1,0 +1,307 @@
+
+#include "PACKAGES_CONFIG.h"
+#include "CPP_OPTIONS.h"
+
+#undef  MULTIPLE_RECORD_STATE_FILES
+
+C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
+CBOP
+
+C     !INTERFACE:
+      SUBROUTINE NF90IO_WRITE_REC ( iRec, myTime, myIter, myThid )
+        use netcdf
+        IMPLICIT NONE
+#include "mpif.h"
+#include "SIZE.h"
+#include "EEPARAMS.h"
+#include "PARAMS.h"
+#include "GRID.h"
+#include "DYNVARS.h"
+#ifdef ALLOW_NONHYDROSTATIC
+#include "NH_VARS.h"
+#endif
+
+        _RL     myTime
+        INTEGER myThid
+        INTEGER myIter
+        INTEGER iRec
+
+        INTEGER mode_flag, ncid, err, i, j, k
+        INTEGER bi, bj
+        INTEGER x_dimid, y_dimid, z_dimid, dimids(4), varid
+        INTEGER xg_dimid, yg_dimid, zl_dimid, zu_dimid, zp1_dimid
+        INTEGER start(4), count(4), rec_dimid
+        LOGICAL iAmDoingIO
+        character*(MAX_LEN_MBUF) msgbuf
+        _RL     a(sNx,sNy,Nr)
+        _RL     is(sNx+10)
+        _RL     js(sNy+10)
+        _RL     ks(Nr+10)
+
+C       Going to really do some IO. Make everyone except master thread wait.
+C       this is done within IO routines => no longer needed
+c       _BARRIER
+C I need the barrier for now....
+C        CALL BARRIER( myThid )
+C (1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+C uVel (1-OLx:sNx+OLx,1-OLy:sNy+OLy,Nr,nSx,nSy)
+
+        if (iRec.EQ.1) then
+C initialize this new file...
+          mode_flag = IOR(nf90_netcdf4, nf90_classic_model)
+          mode_flag = IOR(mode_flag, nf90_mpiio)
+C Set the dimensions...
+          err = nf90_create('TEST.nc', mode_flag, ncid,
+     &          comm = MPI_COMM_WORLD,info = MPI_INFO_NULL)
+          CALL nf90ERR(err,"Opening netcdf file",myThid)
+
+          err = nf90_def_dim(ncid, "record",
+     &          nf90_unlimited, rec_dimid)
+          CALL nf90ERR(err,"Adding record variable",myThid)
+
+          err = nf90_def_dim(ncid, "i",
+     &          sNx*nPx , x_dimid)
+          CALL nf90ERR(err,"Adding record variable",myThid)
+
+          CALL ncerr(nf90_def_dim(ncid, "j",
+     &          sNy*nPy , y_dimid),'defy      ')
+          CALL ncerr(nf90_def_dim(ncid, "ig",
+     &          sNx*nPx , xg_dimid),'defx      ')
+          CALL ncerr(nf90_def_dim(ncid, "jg",
+     &          sNy*nPy , yg_dimid),'defy      ')
+          CALL ncerr(nf90_def_dim(ncid, "k",
+     &          Nr, z_dimid),'defz       ')
+          CALL ncerr(nf90_def_dim(ncid, "ku",
+     &          Nr, z_dimid),'defz       ')
+
+C Define co-ordinate variabes....
+          CALL ncerr(nf90_def_var(ncid, "i", NF90_INT,
+     &          (/ x_dimid /), varid),'defi      ')
+          CALL ncerr(nf90_def_var(ncid, "j", NF90_INT,
+     &          (/ y_dimid /), varid),'defj      ')
+           CALL ncerr(nf90_def_var(ncid, "ig", NF90_INT,
+     &          (/ xg_dimid /), varid),'defi      ')
+           CALL ncerr(nf90_def_var(ncid, "jg", NF90_INT,
+     &          (/ yg_dimid /), varid),'defj      ')
+          CALL ncerr(nf90_def_var(ncid, "k", NF90_INT,
+     &          (/ z_dimid /), varid),'defk      ')
+          CALL ncerr(nf90_def_var(ncid, "record", NF90_INT,
+     &          (/ rec_dimid /), varid),'defrec     ')
+
+C Define dynvars:
+          dimids =  (/  x_dimid, y_dimid, z_dimid, rec_dimid /)
+          CALL ncerr(nf90_def_var(ncid, "Theta", NF90_DOUBLE,
+     &          dimids, varid),'defT      ')
+          CALL ncerr(nf90_def_var(ncid, "Salt", NF90_DOUBLE,
+     &          dimids, varid),'defT      ')
+
+
+C Stop defining stuff and start filling
+          CALL ncerr(nf90_enddef(ncid),'enddef    ')
+
+C         co-ordinate k:
+          CALL ncerr(nf90_inq_varid(ncid, "k", varid),
+     &          'inqk      ')
+          CALL ncerr(nf90_var_par_access(ncid, varid,
+     &      nf90_collective),'setparacc ')
+
+            ks(1:Nr) = (/  (I, I = 0, Nr-1)  /)
+            CALL ncerr(nf90_put_var(ncid, varid,
+     &              kS(1:Nr),
+     &              start = (/ 1 /) ,
+     &              count = (/ Nr /) ),
+     &              'putk      ')
+
+C         co-ordinate i:
+          CALL ncerr(nf90_inq_varid(ncid, "i", varid),
+     &          'inqi      ')
+          CALL ncerr(nf90_var_par_access(ncid, varid,
+     &      nf90_collective),'setparacc ')
+
+          do bj = 1,nSy
+            do bi = 1,nSx
+C           NOT tested w/ more than one thread be processor, so
+C           maybe incorrect.
+              is(1:sNx) = (/  (I, I = myXGlobalLo+(bi-1)*sNx-1,
+     &                  myXGlobalLo+(bi)*sNx-1)  /)
+              CALL ncerr(nf90_put_var(ncid, varid,
+     &              is(1:sNx),
+     &              start = (/ myXGlobalLo+(bi-1)*sNx /) ,
+     &              count = (/ sNx/) ),
+     &              'putXC     ')
+            enddo
+          enddo
+C         co-ordinate ig:
+          CALL ncerr(nf90_inq_varid(ncid, "ig", varid),
+     &          'inqi      ')
+          CALL ncerr(nf90_var_par_access(ncid, varid,
+     &      nf90_collective),'setparacc ')
+
+          do bj = 1,nSy
+            do bi = 1,nSx
+C           NOT tested w/ more than one thread be processor, so
+C           maybe incorrect.
+              is(1:sNx) = (/  (I, I = myXGlobalLo+(bi-1)*sNx-1,
+     &                  myXGlobalLo+(bi)*sNx-1)  /)
+              CALL ncerr(nf90_put_var(ncid, varid,
+     &              is(1:sNx),
+     &              start = (/ myXGlobalLo+(bi-1)*sNx /) ,
+     &              count = (/ sNx/) ),
+     &              'putXC     ')
+            enddo
+          enddo
+
+C         co-ordinate j:
+         CALL ncerr(nf90_inq_varid(ncid, "j", varid),
+     &          'inqj      ')
+        CALL ncerr(nf90_var_par_access(ncid, varid,
+     &      nf90_collective),'setparacc ')
+
+          do bj = 1,nSy
+            do bi = 1,nSx
+C           NOT tested w/ more than one thread be processor, so
+C           maybe incorrect.
+              js(1:sNy) = (/  (I, I = myYGlobalLo+(bj-1)*sNy-1,
+     &                  myYGlobalLo+(bj)*sNy-1)  /)
+              CALL ncerr(nf90_put_var(ncid, varid,
+     &              js(1:sNy),
+     &              start = (/ myYGlobalLo+(bj-1)*sNy /) ,
+     &              count = (/ sNy/) ),
+     &              'putj      ')
+            enddo
+          enddo
+C         co-ordinate jg:
+         CALL ncerr(nf90_inq_varid(ncid, "jg", varid),
+     &          'inqj      ')
+        CALL ncerr(nf90_var_par_access(ncid, varid,
+     &      nf90_collective),'setparacc ')
+
+          do bj = 1,nSy
+            do bi = 1,nSx
+C           NOT tested w/ more than one thread be processor, so
+C           maybe incorrect.
+              js(1:sNy) = (/  (I, I = myYGlobalLo+(bj-1)*sNy-1,
+     &                  myYGlobalLo+(bj)*sNy-1)  /)
+              CALL ncerr(nf90_put_var(ncid, varid,
+     &              js(1:sNy),
+     &              start = (/ myYGlobalLo+(bj-1)*sNy /) ,
+     &              count = (/ sNy/) ),
+     &              'putj      ')
+            enddo
+          enddo
+
+
+          CALL ncerr(nf90_close(ncid),'close     ')
+C       endif iRec.EQ.1; i.e. end file creation.
+        endif
+C
+C       write the data
+C
+
+
+
+
+        call ncerr(nf90_open('TEST.nc',
+     &            IOR(nf90_write, nf90_mpiio), ncid,
+     &            comm = MPI_COMM_WORLD,   info = MPI_INFO_NULL),
+     &            'open      ')
+
+
+C update the record
+        CALL ncerr(nf90_inq_varid(ncid, "record", varid),
+     &          'inqR      ')
+        CALL ncerr(nf90_var_par_access(ncid, varid,
+     &      nf90_collective),'setparacc ')
+        CALL ncerr(nf90_put_var(ncid, varid, (/ iRec /),
+     &     start = (/ iRec /), count = (/ 1 /) ),'         ')
+
+
+
+C start on variables....
+        count = (/  sNx, sNy, Nr, 1 /)
+        do bj = 1,nSy
+          do bi = 1,nSx
+            CALL ncerr(nf90_inq_varid(ncid, "Theta", varid),
+     &          'inqT      ')
+            call ncerr(nf90_var_par_access(ncid, varid,
+     &             nf90_collective),'paraccess ')
+C           NOT tested w/ more than one thread be processor, so
+C           maybe incorrect.
+            start = (/ myXGlobalLo+(bi-1)*sNx,
+     &                 myYGlobalLo+(bj-1)*sNy,
+     &                 1,
+     &                 iRec /)
+            CALL ncerr(nf90_put_var(ncid, varid,
+     &             theta(1:sNx, 1:sNy, 1:Nr, bi, bj),
+     &              start = start, count = count),'putT      ')
+
+C Another Variable
+            CALL ncerr(nf90_inq_varid(ncid, "Salt", varid),
+     &          'inqT      ')
+           call ncerr(nf90_var_par_access(ncid, varid,
+     &             nf90_collective),'paraccess ')
+C           NOT tested w/ more than one thread be processor, so
+C           maybe incorrect.
+           start = (/ myXGlobalLo+(bi-1)*sNx,
+     &                 myYGlobalLo+(bj-1)*sNy,
+     &                 1,
+     &                 iRec /)
+           CALL ncerr(nf90_put_var(ncid, varid,
+     &             salt(1:sNx, 1:sNy, 1:Nr, bi, bj),
+     &              start = start, count = count),'putT      ')
+
+          enddo
+        enddo
+        CALL ncerr(nf90_close(ncid),'close     ')
+
+      RETURN
+      END
+
+      SUBROUTINE nf90ERR( status, msg, myThid )
+
+C     !DESCRIPTION:
+C     Convenience function for handling all MNC and NetCDF library
+C     errors.
+
+C     !USES:
+      use netcdf
+
+      implicit none
+#include "EEPARAMS.h"
+
+C     !DESCRIPTION:
+
+C     !USES:
+      INTEGER  myThid, status
+      character*(*) msg
+CEOP
+
+C     !LOCAL VARIABLES:
+      integer i,lenm
+      character*(MAX_LEN_MBUF) msgbuf
+
+C     Functions
+      integer ILNBLNK
+
+      DO i = 1,MAX_LEN_MBUF
+        msgbuf(i:i) = ' '
+      ENDDO
+
+      IF ( status .NE. NF_NOERR ) THEN
+        write(msgbuf,'(2a)') 'NetCDF ERROR: '
+        lenm = ILNBLNK(msgbuf)
+        print *, msgbuf(1:lenm)
+        CALL print_error(msgbuf(1:lenm), mythid)
+        print *, '==='
+        print *, NF_STRERROR(status)
+        print *, '==='
+        lenm = ILNBLNK(msg)
+        lenm = MIN(lenm,MAX_LEN_MBUF-11)
+        write(msgbuf,'(2a)') 'NF90IO ERROR: ', msg(1:lenm)
+        lenm = ILNBLNK(msgbuf)
+        print *, msgbuf(1:lenm)
+        CALL print_error(msgbuf(1:lenm), mythid)
+        STOP 'ABNORMAL END: S/R NF90ERR'
+      ENDIF
+      RETURN
+      END
