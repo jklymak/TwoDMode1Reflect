@@ -1,0 +1,38 @@
+# RBCS package parameters:
+ &RBCS_PARM01
+#------------------------------------------------------------------------------
+# switches
+#------------------------------------------------------------------------------
+   useRBCtemp=.TRUE.,
+   useRBCvVel=.TRUE.,
+   useRBCuVel=.TRUE.,
+#   useRBCsalt=.TRUE.,
+#------------------------------------------------------------------------------
+#- relaxation times
+# This is the timescale where "sponge=1".
+#------------------------------------------------------------------------------
+    tauRelaxU=1200.,
+    tauRelaxV=1200.,
+    tauRelaxT=1200.,
+#------------------------------------------------------------------------------
+# masks - #1 and #2 = T,S , #3 = tracers ;
+# masks  U,V have explicit name - if left out then TMask = used
+#------------------------------------------------------------------------------
+# Probably need different U and V masks because they are on a slightly different
+# grid
+   relaxMaskFile='../indata/spongeweight.bin',
+#   relaxMaskUFile='usponge.bin',
+#   relaxMaskVFile='vsponge.bin',
+
+#------------------------------------------------------------------------------
+# files containing relaxation flds  have explicit name
+#------------------------------------------------------------------------------
+   relaxTFile='../indata/Tforce.bin',
+   relaxUFile='../indata/Uforce.bin',
+   relaxVFile='../indata/Vforce.bin',
+#------------------------------------------------------------------------------
+   rbcsIniter=0,
+# 1/24 tidal cycle
+   rbcsForcingPeriod=1860.,
+   rbcsForcingCycle=44640.,
+/

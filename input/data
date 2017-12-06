@@ -7,8 +7,8 @@
 # Continuous equation parameters
  &PARM01
  debugLevel=2,
- tRefFile='TRef.bin',
- sRef= 6*35.,
+ tRefFile='../indata/TRef.bin',
+ sRef= 200*35.,
  viscAz=1.E-5,
  viscAh=1.0E-4,
  no_slip_sides=.FALSE.,
@@ -61,18 +61,18 @@
 # niter0=0,
 # times are in s
  startTime=0,
- endTime=1860,
+ endTime=446400,
  deltaT=12.4,
  abEps=0.1,
 # once per tide checkpoint...
  pChkptFreq=44640,
  chkptFreq=0.0,
- dumpFreq=1860,
+ dumpFreq=0,
  monitorFreq=1860,
 # Forcing for boundary condition files
  periodicExternalForcing=.TRUE.,
 # 1/12th M2 tidal period...
- externForcingPeriod = 3720.,
+ externForcingPeriod = 1860.,
 # one tidal period (12 records need to be in OBEuFile, etc)
  externForcingCycle = 44640.,
  rwSuffixType=1,
@@ -82,14 +82,14 @@
  &PARM04
  usingCartesianGrid=.TRUE.,
  usingSphericalPolarGrid=.FALSE.,
- delXfile='delXvar.bin',
- delYfile='delYvar.bin',
- delRfile = 'delZvar.bin',
+ delXfile='../indata/delXvar.bin',
+ delYfile='../indata/delYvar.bin',
+ delRfile='../indata/delZvar.bin',
 /
 
 # Input datasets
  &PARM05
- bathyFile='topo.bin',
+ bathyFile='../indata/topo.bin',
  mdsioLocalDir='../../',
- hydrogThetaFile='T0.bin',
+ hydrogThetaFile='../indata/T0.bin',
  /

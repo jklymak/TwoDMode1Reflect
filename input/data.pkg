@@ -2,7 +2,8 @@
  &PACKAGES
  useOBCS=.TRUE.,
  useKL10=.TRUE.,
- useDIAGNOSTICS=.FALSE.,
+ useDIAGNOSTICS=.TRUE.,
+ useRBCS=.TRUE.,
  useMNC=.FALSE.,
  useNF90IO=.TRUE.,
  /

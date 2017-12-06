@@ -1,7 +1,10 @@
+import matplotlib
+matplotlib.use('Agg')
 import numpy as np
 import scipy
 import numpy.matlib as matlib
 import matplotlib.pyplot as plt
+
 from shutil import copy, move
 import shutil
 from os import mkdir
@@ -102,7 +105,10 @@ topo = np.hstack((topo, np.arange(topo[-1], H, dz0)))
 topo = np.hstack((topo, H * (np.ones(nx-len(topo)))))
 topo = np.convolve(topo, np.ones(50)/50., mode='same')
 topo = -topo
-topo[topo<-H]=-H
+topo[topo<-H] = -H
+topo[-50:] = -H
+print('Topo 0 ', topo[0])
+topo[0] = 0.
 
 # plot
 fig, ax = plt.subplots()
@@ -113,7 +119,7 @@ fig.savefig(outdir+'/figs/Topo.png')
 
 TT0 = matlib.repmat(topo,1,ny)
 
-with open(outdir+"/topo.bin", "wb") as f:
+with open(outdir+"/indata/topo.bin", "wb") as f:
 	TT0.tofile(f)
 f.close()
 # dz:
@@ -196,10 +202,8 @@ externalForcingCycle=12.4*3600
 print("externalForcingPeriod="+'%1.0f'%externalForcingPeriod)
 print("externalForcingCycle="+'%1.0f'%externalForcingCycle)
 
-
 kx = -kr
 ky = 0.
-
 
 # a bit easier to do in p:
 p0 = np.abs ( (om**2 - f0**2) / (kx * om + 1j * ky * f0)) * u0
@@ -238,6 +242,10 @@ fig.colorbar(pcm)
 fig.savefig(outdir + '/figs/Tp0.png')
 
 Tf = Tp + T0[:, np.newaxis]
+fig, ax = plt.subplots()
+pcm = ax.pcolormesh(np.real(Tf))
+fig.colorbar(pcm)
+fig.savefig(outdir + '/figs/Tf.png')
 
 print("Writing forcing files:spongeweight")
 
@@ -245,7 +253,11 @@ print("Writing forcing files:spongeweight")
 spongew = len(np.where(x > (x[-1] - 300.e3))[0])
 print('spongew: %d' % spongew)
 aa = np.zeros((nz, nx))
-aa[:,-spongew:] = np.linspace(0.0,1.,spongew)
+aa[:,-spongew:] = np.linspace(0.0, 1., spongew)
+
+fig, ax = plt.subplots()
+ax.pcolormesh(aa)
+fig.savefig(outdir + '/figs/spongeweight.png')
 
 with open(outdir+"/indata/spongeweight.bin", "wb") as f:
     aa.tofile(f)
@@ -253,25 +265,30 @@ with open(outdir+"/indata/spongeweight.bin", "wb") as f:
 ###########################
 
 print("Writing forcing files:")
-
+print('dt:', dt)
 with open(outdir+"/indata/Uforce.bin", "wb") as f:
-    for tind in range(0,ntosave):
-        t = tind*dt+dt/2.
-        aa = np.real(U * np.exp(-1j*t*om))
-        aa.tofile(f)
+    with open(outdir+"/indata/Ue.bin", "wb") as fb:
+        for tind in range(0, ntosave):
+            t = tind * dt + dt / 2.
+            aa = np.real(U * np.exp(-1j * t * om))
+            aa.tofile(f)
+            (aa[:,-1]).tofile(fb)
 
 with open(outdir+"/indata/Vforce.bin", "wb") as f:
-    for tind in range(0,ntosave):
-        t = tind*dt+dt/2.
-        aa = np.real(V * np.exp(-1j*t*om))
-        aa.tofile(f)
+    with open(outdir+"/indata/Ve.bin", "wb") as fb:
+        for tind in range(0,ntosave):
+            t = tind * dt + dt / 2.
+            aa = np.real(V * np.exp(-1j * t * om))
+            aa.tofile(f)
+            (aa[:,-1]).tofile(fb)
 
 with open(outdir+"/indata/Tforce.bin", "wb") as f:
-    for tind in range(0,ntosave):
-        t = tind*dt+dt/2.
-        aa = np.real(Tf * np.exp(-1j*t*om))
-        aa.tofile(f)
-
+    with open(outdir+"/indata/Te.bin", "wb") as fb:
+        for tind in range(0,ntosave):
+            t = tind * dt + dt / 2.
+            aa = np.real(Tp * np.exp(-1j * t * om)) + T0[:, np.newaxis]
+            aa.tofile(f)
+            (aa[:,-1]).tofile(fb)
 
 
 ## Copy some other files

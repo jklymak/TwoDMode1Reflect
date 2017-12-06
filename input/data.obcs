@@ -1,15 +1,15 @@
 # Open-boundaries
  &OBCS_PARM01
- OB_Iwest=1*1,
+ OB_Iwest=1*0,
  OB_Ieast=1*-1,
- OB_Jnorth=16*0,
- OB_Jsouth=16*0,
- useOBCSsponge=.TRUE.,
+ OB_Jnorth=2048*0,
+ OB_Jsouth=2048*0,
+ useOBCSsponge=.FALSE.,
  useOBCSprescribe=.TRUE.,
- OBEuFile = 'Ue.bin',
- OBWuFile = 'Uw.bin',
- OBEtFile = 'Te.bin',
- OBWtFile = 'Tw.bin',
+ OBEuFile = '../indata/Ue.bin',
+# OBWuFile = 'Uw.bin',
+ OBEtFile = '../indata/Te.bin',
+# OBWtFile = 'Tw.bin',
  /
 
 # Orlanski parameters

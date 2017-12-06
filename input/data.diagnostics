@@ -1,19 +1,38 @@
 # diagnostics Package
-# Energy terms...
- &diagnostics_list 
-frequency(1) = -1860,
-timephase(1)=0.,
-fields(1,1)='SDIAG1',
-filename(1)='Ez',
-frequency(2) = 1860,
-fields(1,2)='SDIAG3',
-filename(2)='vE',
-frequency(3) = 1860,
-fields(1,3)='SDIAG6',
-filename(3)='vPbc',
-frequency(4) = 1860,
-fields(1,4)='SDIAG7',
-filename(4)='vPbt',
+
+&diagnostics_list
+# 3D variables.
+ frequency(1)  = -3720,
+ timePhase(1)  = 0,
+ fields(1:5,1) = 'UVEL    ',
+                 'VVEL    ',
+                 'WVEL    ',
+                 'THETA   ',
+                 'PHIHYD  ',
+ filename(1)   = 'spinup'
+#
+ filename(2)   = 'spinup2d'
+ frequency(2)  = -3720,
+ timePhase(2)  = 0,
+ fields(1:2,2) = 'ETAN    ',
+                 'PHIBOT  ',
+#
+# 3D variables.  Just output every 20 minutes last tidal cycle.
+ frequency(3)  = -1240,
+ timePhase(3)  = 401760,
+ fields(1:5,3) = 'UVEL    ',
+                 'VVEL    ',
+                 'WVEL    ',
+                 'THETA   ',
+                 'PHIHYD  ',
+ filename(3)   = 'final'
+#
+ filename(4)   = 'final2d'
+ frequency(4)  = -1240,
+ timePhase(4)  = 401760,
+ fields(1:2,4) = 'ETAN    ',
+                 'PHIBOT  ',
+#
 /
 
 &diag_statis_parms
